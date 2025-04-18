@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Best Weather App</title>
+  <style>
+    :root {
+      --bg-light: #e0f7fa;
+      --bg-dark: #1e1e2f;
+      --text-light: #000;
+      --text-dark: #fff;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-light);
+      color: var(--text-light);
+      transition: all 0.3s ease;
+    }
+
+    body.dark {
+      background-color: var(--bg-dark);
+      color: var(--text-dark);
+    }
+
+    .app {
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 2rem;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+
+    input, button {
+      padding: 10px;
+      margin: 5px;
+      font-size: 1rem;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .toggle {
+      float: right;
+      margin: -10px 0 10px 0;
+    }
+
+    .forecast {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .day {
+      flex: 1 0 30%;
+      margin: 10px;
+      padding: 10px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .background.sunny {
+      background: linear-gradient(to right, #fceabb, #f8b500);
+    }
+
+    .background.rain {
+      background: linear-gradient(to right, #4e54c8, #8f94fb);
+    }
+
+    .background.clouds {
+      background: linear-gradient(to right, #bdc3c7, #2c3e50);
+    }
+
+    .background.clear {
+      background: linear-gradient(to right, #56ccf2, #2f80ed);
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <h1>🌦️ Best Weather App</h1>
+
+    <div class="toggle">
+      <button onclick="toggleDarkMode()">🌓 Dark Mode</button>
+      <button onclick="toggleUnit()">🌡️ °C / °F</button>
+    </div>
+
+    <div>
+      <input type="text" id="city-input" placeholder="Enter city">
+      <button onclick="getWeather()">Search</button>
+      <button onclick="startVoice()">🎙️ Voice</button>
+    </div>
+
+    <div>
+      <button onclick="getLocationWeather()">📍 Use My Location</button>
+    </div>
+
+    <div id="weather-result"></div>
+    <div id="forecast" class="forecast"></div>
+
+    <h3>Saved Cities:</h3>
+    <ul id="gwalior,Delhi,Mumbai,Kolkata,Chennai,Bangalore,Hyderabad,Pune,Ahmedabad,Jaipur,Surat,Lucknow,Kanpur,Nagpur,Visakhapatnam,Patna,Ludhiana,Agra,Nashik,Faridabad,Meerut,Rajkot,Varanasi,Srinagar,Amritsar,Allahabad,Ranchi,Guwahati,Chandigarh,Bhubaneswar,Coimbatore,Vijayawada,Mysore,Thiruvananthapuram,Mangalore,Raipur,Jodhpur,Noida,Gurgaon,Howrah,Jamshedpur,Dehradun,Gwalior,Jalandhar,Ahmednagar,Udaipur,Shimla,Panaji,Kozhikode,Thrissur,Salem,Dhanbad,Kollam,Solapur,Bilaspur,Hubli,Dharwad,Warangal,Tirupati,Guntur,Ajmer,Kota,Aligarh,Saharanpur,Asansol,Bareilly,Siliguri,Nanded,Nellore,Belagavi,Ambala,Rewa,Kakinada,Bidar,Karimnagar,Nizamabad,Nagaur,Bhagalpur,Bokaro,Anantapur
+    Alirajpur, Anuppur, Ashoknagar, Balaghat, Barwani, Betul, Bhind, Bhopal, Burhanpur, Chhatarpur, Chhindwara, Damoh, Datia, Dewas, Dhar, Dindori, Guna, Hoshangabad, Jabalpur, Jhabua, Katni, Khandwa, Khargone, Mandla, Mandsaur, Morena, Narsinghpur, Neemuch, Panna, Raisen, Rajgarh, Ratlam, Rewa, Sagar, Satna, Sehore, Seoni, Shahdol, Shajapur, Sheopur, Shivpuri, Sidhi, Singrauli, Tikamgarh, Ujjain, Umaria, Vidisha
+ ">
+</ul>
+  </div>
+
+  <script>
+    const apiKey = 'cfab232b852d568005c655a94a8ea317'; // Replace with your OpenWeatherMap API key
+    let unit = 'metric';
+    let savedCities = JSON.parse(localStorage.getItem("cities")) || [];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      displaySavedCities();
+    });
+
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark");
+    }
+
+    function toggleUnit() {
+      unit = unit === 'metric' ? 'imperial' : 'metric';
+      getWeather();
+    }
+
+    function startVoice() {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = 'en-US';
+      recognition.start();
+
+      recognition.onresult = function(event) {
+        const city = event.results[0][0].transcript;
+        document.getElementById("city-input").value = city;
+        getWeather();
+      };
+    }
+
+    function getWeather(cityInput) {
+      const city = cityInput || document.getElementById('city-input').value.trim();
+      if (!city) return alert("Please enter a city name");
+
+      fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=${unit}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.cod !== 200) return alert("City not found.");
+          updateBackground(data.weather[0].main);
+          displayWeather(data);
+          getForecast(city);
+          if (!savedCities.includes(city)) {
+            savedCities.push(city);
+            localStorage.setItem("cities", JSON.stringify(savedCities));
+            displaySavedCities();
+          }
+        });
+    }
+
+    function getLocationWeather() {
+      navigator.geolocation.getCurrentPosition(position => {
+        const { latitude, longitude } = position.coords;
+        fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=${unit}`)
+          .then(res => res.json())
+          .then(data => {
+            updateBackground(data.weather[0].main);
+            displayWeather(data);
+            getForecast(data.name);
+          });
+      }, () => alert("Location access denied."));
+    }
+
+    function displayWeather(data) {
+      document.getElementById("weather-result").innerHTML = `
+        <h2>${data.name}, ${data.sys.country}</h2>
+        <p>${data.weather[0].description}</p>
+        <p>🌡️ Temp: ${data.main.temp}° ${unit === 'metric' ? 'C' : 'F'}</p>
+        <p>💧 Humidity: ${data.main.humidity}%</p>
+        <p>💨 Wind: ${data.wind.speed} ${unit === 'metric' ? 'm/s' : 'mph'}</p>
+        <img src="https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png">
+      `;
+    }
+
+    function getForecast(city) {
+      fetch(`https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${apiKey}&units=${unit}`)
+        .then(res => res.json())
+        .then(data => {
+          const forecastEl = document.getElementById("forecast");
+          forecastEl.innerHTML = "";
+          const daily = {};
+
+          data.list.forEach(entry => {
+            const date = entry.dt_txt.split(" ")[0];
+            if (!daily[date]) daily[date] = entry;
+          });
+
+          Object.values(daily).slice(0, 5).forEach(day => {
+            forecastEl.innerHTML += `
+              <div class="day">
+                <p>${new Date(day.dt_txt).toLocaleDateString()}</p>
+                <p>${day.weather[0].main}</p>
+                <img src="https://openweathermap.org/img/wn/${day.weather[0].icon}@2x.png" />
+                <p>${day.main.temp}°</p>
+              </div>
+            `;
+          });
+        });
+    }
+
+    function updateBackground(condition) {
+      const bg = document.body.classList;
+      bg.remove("sunny", "rain", "clouds", "clear");
+      if (/rain/i.test(condition)) bg.add("rain");
+      else if (/cloud/i.test(condition)) bg.add("clouds");
+      else if (/sun/i.test(condition)) bg.add("sunny");
+      else bg.add("clear");
+    }
+
+    function displaySavedCities() {
+      const ul = document.getElementById("saved-cities");
+      ul.innerHTML = "";
+      savedCities.forEach(city => {
+        const li = document.createElement("li");
+        li.innerText = city;
+        li.onclick = () => getWeather(city);
+        ul.appendChild(li);
+      });
+    }
+  </script>
+</body>
+</html>
